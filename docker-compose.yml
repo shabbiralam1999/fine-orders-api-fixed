@@ -1,0 +1,35 @@
+services:
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - APP_ENV=production
+      - FLASK_DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:?set SECRET_KEY in your .env file}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    # Pinned to a specific patch version rather than the floating `16-alpine`
+    # tag so a fresh `docker pull` can't silently hand you a new minor
+    # release. For production, pin the immutable digest instead, e.g.:
+    #   image: postgres:16-alpine@sha256:<digest-from-docker-inspect-or-registry>
+    # Run `docker pull postgres:16-alpine && docker inspect --format='{{index .RepoDigests 0}}' postgres:16-alpine`
+    # to get the current digest for your platform, then paste it in above.
+    image: postgres:16.4-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-orders}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your .env file}
+      - POSTGRES_DB=${POSTGRES_DB:-orders}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orders}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  db-data:
